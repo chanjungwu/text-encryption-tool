@@ -3,20 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>文本加密排序工具 (極簡版)</title>
+<title>文本加密工具 (雙模式版)</title>
 <style>
     :root {
         --sidebar-width: 300px;
         --primary-color: #3182ce;
         --encrypt-color: #dd6b20;
         --save-color: #38a169;
-        --link-color: #00b5d8; /* 連結按鈕顏色 */
         --bg-color: #edf2f7;
         --sidebar-bg: #ffffff;
         --text-color: #2d3748;
         --border-color: #e2e8f0;
         --card-bg: #ffffff;
         --indicator-color: #4299e1;
+        --tab-active-bg: #ebf8ff;
+        --tab-active-text: #2b6cb0;
     }
 
     * { box-sizing: border-box; outline: none; }
@@ -42,7 +43,7 @@
         padding: 20px;
         flex-shrink: 0;
         box-shadow: 2px 0 10px rgba(0,0,0,0.03);
-        z-index: 10;
+        z-index: 20;
         overflow-y: auto;
     }
 
@@ -56,17 +57,8 @@
         gap: 8px;
     }
 
-    .control-group {
-        margin-bottom: 20px;
-    }
-
-    label {
-        display: block;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #718096;
-        margin-bottom: 6px;
-    }
+    .control-group { margin-bottom: 20px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #718096; margin-bottom: 6px; }
 
     input[type="password"], textarea {
         width: 100%;
@@ -78,7 +70,6 @@
         transition: all 0.2s;
         background: #f7fafc;
     }
-
     input[type="password"]:focus, textarea:focus {
         border-color: var(--primary-color);
         background: #fff;
@@ -93,60 +84,96 @@
         line-height: 1.4;
     }
 
-    .btn-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
+    .btn-group { display: flex; flex-direction: column; gap: 10px; }
     button {
-        padding: 12px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 0.95rem;
-        transition: all 0.2s;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        color: white;
+        padding: 12px; border: none; border-radius: 6px; cursor: pointer;
+        font-weight: 600; font-size: 0.95rem; transition: all 0.2s;
+        display: flex; justify-content: center; align-items: center; gap: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); color: white;
     }
-
     button:active { transform: translateY(1px); }
     button:hover { filter: brightness(110%); }
 
     .btn-decrypt { background-color: var(--primary-color); }
     .btn-encrypt { background-color: var(--encrypt-color); }
     .btn-save { background-color: var(--save-color); }
-    
-    .btn-copy { 
-        background-color: #cbd5e0; 
-        color: #4a5568; 
-    }
+    .btn-copy { background-color: #cbd5e0; color: #4a5568; }
     .btn-copy:hover { background-color: #a0aec0; color: white; }
 
-    .divider {
-        height: 1px;
-        background: var(--border-color);
-        margin: 20px 0;
-    }
+    .divider { height: 1px; background: var(--border-color); margin: 20px 0; }
 
     /* --- 右側工作區 --- */
     .workspace {
         flex: 1;
         background-color: var(--bg-color);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* 內部滾動 */
+    }
+
+    /* 頁籤區 */
+    .tabs-header {
+        background-color: #fff;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        gap: 20px;
+        flex-shrink: 0;
+    }
+
+    .tab-btn {
+        padding: 15px 5px;
+        background: transparent;
+        color: #718096;
+        border: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 0;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.95rem;
+        box-shadow: none;
+    }
+    .tab-btn:hover { color: var(--primary-color); }
+    .tab-btn.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    /* 視圖容器 */
+    .view-container {
+        flex: 1;
         padding: 20px 30px;
         overflow-y: auto;
         position: relative;
-        display: flex;
-        flex-direction: column;
     }
 
+    /* 兩種模式切換 */
+    .view-panel { display: none; height: 100%; }
+    .view-panel.active { display: flex; flex-direction: column; }
+
+    /* 純文字模式樣式 */
+    #rawTextArea {
+        width: 100%;
+        height: 100%;
+        resize: none;
+        padding: 20px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 1rem;
+        line-height: 1.6;
+        background: white;
+        color: #2d3748;
+    }
+    #rawTextArea:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+    }
+
+    /* 列表模式容器 */
     #listContainer {
-        width: 100%; 
+        width: 100%;
         padding-bottom: 100px;
         display: flex;
         flex-direction: column;
@@ -155,14 +182,8 @@
     }
 
     .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: #a0aec0;
-        margin-top: 100px;
-        text-align: center;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        height: 100%; color: #a0aec0; margin-top: 50px; text-align: center;
     }
     .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
 
@@ -172,161 +193,65 @@
         border-radius: 8px;
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         border: 1px solid var(--border-color);
-        display: flex;
-        flex-direction: column;
+        display: flex; flex-direction: column;
         transition: box-shadow 0.2s, background-color 0.3s;
         position: relative;
     }
+    .list-item:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.08); border-color: #cbd5e0; }
+    .list-item.dragging { opacity: 0.4; background: #f7fafc; border: 2px dashed #cbd5e0; }
 
-    .list-item:hover {
-        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-        border-color: #cbd5e0;
-    }
-
-    .list-item.dragging {
-        opacity: 0.4;
-        background: #f7fafc;
-        border: 2px dashed #cbd5e0;
-    }
-
-    /* 標題列 */
     .item-header {
-        background: #f8fafc;
-        border-bottom: 1px solid var(--border-color);
-        padding: 6px 16px;
-        border-radius: 8px 8px 0 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        cursor: grab; 
-        user-select: none;
-        height: 48px; /* 固定高度讓按鈕好對齊 */
+        background: #f8fafc; border-bottom: 1px solid var(--border-color);
+        padding: 6px 16px; border-radius: 8px 8px 0 0;
+        display: flex; justify-content: space-between; align-items: center;
+        cursor: grab; user-select: none; height: 48px;
     }
     .item-header:active { cursor: grabbing; background: #edf2f7; }
 
     .drag-label {
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #a0aec0;
-        text-transform: uppercase;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        pointer-events: none;
+        font-size: 0.8rem; font-weight: 700; color: #a0aec0;
+        text-transform: uppercase; display: flex; align-items: center; gap: 6px; pointer-events: none;
     }
 
-    /* 標題列右側按鈕群組 */
-    .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
 
-    /* 通用按鈕樣式 */
     .action-btn {
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 4px 12px;
-        border-radius: 4px;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        pointer-events: auto; 
+        cursor: pointer; font-size: 0.8rem; font-weight: 600;
+        padding: 4px 12px; border-radius: 4px; transition: all 0.2s;
+        display: flex; align-items: center; gap: 4px; pointer-events: auto;
     }
-
-    /* 圓形連結按鈕 (新功能) */
     .btn-circle-link {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background-color: #e6fffa;
-        color: #319795;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #b2f5ea;
-        margin-right: 8px; /* 與儲存按鈕隔開一點 */
-        transition: all 0.2s;
-        cursor: pointer;
-        pointer-events: auto;
+        width: 32px; height: 32px; border-radius: 50%;
+        background-color: #e6fffa; color: #319795;
+        display: flex; align-items: center; justify-content: center;
+        border: 1px solid #b2f5ea; margin-right: 8px; cursor: pointer; pointer-events: auto;
     }
-    .btn-circle-link:hover {
-        background-color: #319795;
-        color: white;
-        transform: scale(1.1);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .btn-circle-link svg {
-        width: 16px;
-        height: 16px;
-    }
+    .btn-circle-link:hover { background-color: #319795; color: white; transform: scale(1.1); }
+    .btn-circle-link svg { width: 16px; height: 16px; }
 
-    /* 儲存按鈕 */
-    .btn-card-save {
-        color: #3182ce;
-        background-color: #ebf8ff;
-    }
-    .btn-card-save:hover {
-        background-color: #3182ce;
-        color: white;
-    }
+    .btn-card-save { color: #3182ce; background-color: #ebf8ff; }
+    .btn-card-save:hover { background-color: #3182ce; color: white; }
+    .btn-card-remove { color: #e53e3e; background-color: #fff5f5; }
+    .btn-card-remove:hover { background-color: #e53e3e; color: white; }
 
-    /* 移除按鈕 */
-    .btn-card-remove {
-        color: #e53e3e;
-        background-color: #fff5f5;
-    }
-    .btn-card-remove:hover {
-        background-color: #e53e3e;
-        color: white;
-    }
-
-    /* 內容區域 */
-    .item-body {
-        padding: 16px;
-        cursor: text;
-    }
-
+    .item-body { padding: 16px; cursor: text; }
     .item-textarea {
-        width: 100%;
-        border: none;
-        resize: none;
-        font-family: inherit;
-        font-size: 1rem;
-        line-height: 1.6;
-        color: #2d3748;
-        background: transparent;
-        padding: 0;
-        overflow: hidden;
-        display: block;
-        cursor: text;
+        width: 100%; border: none; resize: none; font-family: inherit;
+        font-size: 1rem; line-height: 1.6; color: #2d3748;
+        background: transparent; padding: 0; overflow: hidden; display: block; cursor: text;
     }
     
-    /* 拖曳指引線 */
     .drop-indicator {
-        height: 4px;
-        background: var(--indicator-color);
-        margin: 5px 0;
-        border-radius: 2px;
-        box-shadow: 0 0 8px rgba(66, 153, 225, 0.6);
-        pointer-events: none;
+        height: 4px; background: var(--indicator-color);
+        margin: 5px 0; border-radius: 2px;
+        box-shadow: 0 0 8px rgba(66, 153, 225, 0.6); pointer-events: none;
     }
 
     #status {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 24px;
-        background: #2d3748;
-        color: white;
-        border-radius: 8px;
-        font-weight: 500;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transform: translateY(-100px);
-        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        z-index: 1000;
+        position: fixed; top: 20px; right: 20px; padding: 12px 24px;
+        background: #2d3748; color: white; border-radius: 8px; font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-100px);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000;
     }
     #status.show { transform: translateY(0); }
     #status.success { background: #38a169; }
@@ -335,7 +260,7 @@
     @media (max-width: 768px) {
         body { flex-direction: column; overflow: auto; }
         .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); }
-        .workspace { overflow: visible; }
+        .workspace { overflow: visible; height: auto; min-height: 500px; }
     }
 </style>
 </head>
@@ -360,12 +285,12 @@
         <div class="btn-group">
             <button id="decryptBtn" class="btn-decrypt">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
-                解密並列表
+                解密並顯示
             </button>
             
             <button id="encryptDirectBtn" class="btn-encrypt">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                加密 (明文轉亂碼)
+                加密 (左側文字轉亂碼)
             </button>
 
             <button id="copyBtn" class="btn-copy">
@@ -376,21 +301,42 @@
         <div class="divider"></div>
 
         <div class="control-group">
-            <label>3. 列表存檔</label>
-            <button id="encryptListBtn" class="btn-save">
+            <label>3. 內容存檔</label>
+            <button id="encryptResultBtn" class="btn-save">
                 <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                將列表反向加密
+                將右側內容反向加密
             </button>
         </div>
     </aside>
 
     <main class="workspace">
-        <div id="listContainer">
-            <div class="empty-state">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                <p>解密後的列表將顯示於此。<br>
-                   按住「標題列」可拖曳，點擊右側按鈕可複製連結或儲存。
-                </p>
+        <div class="tabs-header">
+            <button class="tab-btn active" data-tab="list">
+                <svg width="16" height="16" style="display:inline; vertical-align:text-bottom;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                列表模式 (排序整理)
+            </button>
+            <button class="tab-btn" data-tab="text">
+                <svg width="16" height="16" style="display:inline; vertical-align:text-bottom;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                純文字模式 (自由編輯)
+            </button>
+        </div>
+
+        <div class="view-container">
+            <!-- 列表視圖 -->
+            <div id="listView" class="view-panel active">
+                <div id="listContainer">
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <p>解密後的內容將顯示於此。<br>
+                           可切換上方頁籤至「純文字模式」進行編輯。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 純文字視圖 -->
+            <div id="textView" class="view-panel">
+                <textarea id="rawTextArea" placeholder="在此模式下，您可以像編輯記事本一樣自由編輯全文。&#10;切換回列表模式時，系統會自動依據「空行」將內容分割為卡片。"></textarea>
             </div>
         </div>
     </main>
@@ -399,19 +345,66 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // UI 元素
             const inputText = document.getElementById('inputText');
             const listContainer = document.getElementById('listContainer');
-            const encryptListBtn = document.getElementById('encryptListBtn');
+            const rawTextArea = document.getElementById('rawTextArea');
+            const encryptResultBtn = document.getElementById('encryptResultBtn');
             const encryptDirectBtn = document.getElementById('encryptDirectBtn');
             const decryptBtn = document.getElementById('decryptBtn');
             const copyBtn = document.getElementById('copyBtn');
             const password = document.getElementById('password');
             const status = document.getElementById('status');
+            const tabs = document.querySelectorAll('.tab-btn');
+            const views = {
+                'list': document.getElementById('listView'),
+                'text': document.getElementById('textView')
+            };
 
+            let currentMode = 'list';
             let dragSrcEl = null;
             const dropIndicator = document.createElement('div');
             dropIndicator.className = 'drop-indicator';
 
+            // --- 頁籤切換與同步邏輯 ---
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetMode = tab.dataset.tab;
+                    if (currentMode === targetMode) return;
+                    
+                    // 執行資料同步
+                    syncData(currentMode, targetMode);
+
+                    // 切換 UI
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    Object.values(views).forEach(v => v.classList.remove('active'));
+                    views[targetMode].classList.add('active');
+
+                    currentMode = targetMode;
+                });
+            });
+
+            function syncData(fromMode, toMode) {
+                if (fromMode === 'list' && toMode === 'text') {
+                    // 列表 -> 純文字
+                    const items = listContainer.querySelectorAll('.item-textarea');
+                    const textParts = [];
+                    items.forEach(textarea => {
+                        if(textarea.value.trim()) textParts.push(textarea.value.trim());
+                    });
+                    // 使用雙換行合併
+                    rawTextArea.value = textParts.join('\n\n');
+                } 
+                else if (fromMode === 'text' && toMode === 'list') {
+                    // 純文字 -> 列表
+                    const text = rawTextArea.value;
+                    renderList(text);
+                }
+            }
+
+            // --- 加密工具函數 ---
             function getRandomBytes(length) {
                 const array = new Uint8Array(length);
                 window.crypto.getRandomValues(array);
@@ -431,13 +424,12 @@
                 );
             }
 
+            // --- 卡片生成邏輯 ---
             function createListItem(text) {
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 
-                // 1. 生成連結按鈕 HTML (圓形圖示)
                 const linkButtonsHtml = generateLinkButtons(text);
-
                 const rows = text.split('\n').length;
 
                 div.innerHTML = `
@@ -447,16 +439,12 @@
                             拖曳
                         </span>
                         <div class="header-actions">
-                            <div class="link-group" style="display:flex;">
-                                ${linkButtonsHtml}
-                            </div>
+                            <div class="link-group" style="display:flex;">${linkButtonsHtml}</div>
                             <span class="action-btn btn-card-save" onclick="saveCard(this)">
                                 <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
                                 儲存
                             </span>
-                            <span class="action-btn btn-card-remove" onclick="removeCard(this)">
-                                ✕ 移除
-                            </span>
+                            <span class="action-btn btn-card-remove" onclick="removeCard(this)">✕ 移除</span>
                         </div>
                     </div>
                     <div class="item-body">
@@ -466,6 +454,7 @@
 
                 addDragEvents(div);
                 
+                // Textarea 自動高度
                 const textarea = div.querySelector('textarea');
                 textarea.addEventListener('input', function() {
                     this.style.height = 'auto';
@@ -479,16 +468,12 @@
                 return div;
             }
 
-            // 生成「圓形連結按鈕」的 HTML
             function generateLinkButtons(text) {
                 const urlRegex = /(https?:\/\/[^\s]+)/g;
                 const urls = text.match(urlRegex) || [];
-                
                 if (urls.length === 0) return '';
-
                 let html = '';
                 urls.forEach(url => {
-                    // 圓形按鈕：鎖鏈/複製圖示
                     html += `
                         <div class="btn-circle-link" title="複製連結: ${url}" onclick="copyToClipboard('${url}')">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
@@ -498,25 +483,31 @@
                 return html;
             }
 
-            // 卡片內部的儲存按鈕功能
+            // 渲染列表 (從文字)
+            function renderList(fullText) {
+                listContainer.innerHTML = '';
+                const items = fullText.split(/\n\s*\n+/).filter(t => t.trim().length > 0);
+                
+                if(items.length === 0 && fullText.trim().length > 0) {
+                    listContainer.appendChild(createListItem(fullText.trim()));
+                } else {
+                    items.forEach(item => listContainer.appendChild(createListItem(item.trim())));
+                }
+            }
+
+            // --- 卡片功能 ---
             window.saveCard = function(btn) {
                 const card = btn.closest('.list-item');
                 const textarea = card.querySelector('.item-textarea');
                 const linkGroup = card.querySelector('.link-group');
-                
-                // 1. 取得最新文字
                 const newText = textarea.value;
-
-                // 2. 重新生成標題列的連結按鈕
                 linkGroup.innerHTML = generateLinkButtons(newText);
-
-                // 3. 視覺回饋
+                
+                // 視覺回饋
                 card.style.backgroundColor = '#f0fff4';
                 card.style.borderColor = '#38a169';
-                
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '已更新!';
-                
                 setTimeout(() => {
                     card.style.backgroundColor = '#ffffff';
                     card.style.borderColor = '#e2e8f0';
@@ -525,44 +516,34 @@
             }
 
             window.removeCard = function(btn) {
-                if(confirm('確定要移除此區塊嗎？')) {
-                    btn.closest('.list-item').remove();
-                }
+                if(confirm('確定要移除此區塊嗎？')) btn.closest('.list-item').remove();
             }
 
+            // --- 拖曳事件 ---
             function addDragEvents(item) {
                 const header = item.querySelector('.item-header');
-
                 header.addEventListener('mousedown', function(e) {
-                    // 如果點到的是按鈕或其子元素，絕不啟動拖曳
                     if(e.target.closest('.action-btn') || e.target.closest('.btn-circle-link')) return;
                     item.setAttribute('draggable', 'true');
                 });
-
                 header.addEventListener('mouseup', function() {
                     item.setAttribute('draggable', 'false');
                 });
-
                 item.addEventListener('dragstart', function(e) {
                     dragSrcEl = this;
                     e.dataTransfer.effectAllowed = 'move';
                     e.dataTransfer.setData('text/html', this.innerHTML);
                     setTimeout(() => this.classList.add('dragging'), 0);
                 });
-
                 item.addEventListener('dragover', function(e) {
                     e.preventDefault();
-                    
                     const target = e.target.closest('.list-item');
                     if (!target || target === dragSrcEl) return;
-
                     const rect = target.getBoundingClientRect();
                     const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
-
                     if (next) target.after(dropIndicator);
                     else target.before(dropIndicator);
                 });
-
                 item.addEventListener('drop', function(e) {
                     e.stopPropagation();
                     if (dropIndicator.parentNode === listContainer) {
@@ -570,7 +551,6 @@
                     }
                     return false;
                 });
-
                 item.addEventListener('dragend', function(e) {
                     this.classList.remove('dragging');
                     this.setAttribute('draggable', 'false');
@@ -578,6 +558,7 @@
                 });
             }
 
+            // --- 解密 ---
             async function handleDecrypt() {
                 try {
                     const encryptedText = inputText.value.trim();
@@ -600,15 +581,11 @@
                     const decoder = new TextDecoder();
                     const fullText = decoder.decode(decryptedBuffer);
 
-                    listContainer.innerHTML = '';
-                    const items = fullText.split(/\n\s*\n+/).filter(t => t.trim().length > 0);
-                    
-                    if(items.length === 0 && fullText.trim().length > 0) {
-                        listContainer.appendChild(createListItem(fullText.trim()));
-                    } else {
-                        items.forEach(item => listContainer.appendChild(createListItem(item.trim())));
-                    }
-                    showStatus(`解密成功！(${items.length || 1} 筆資料)`, 'success');
+                    // 同時更新兩個 View
+                    renderList(fullText); // 更新列表
+                    rawTextArea.value = fullText; // 更新文字框
+
+                    showStatus(`解密成功！`, 'success');
 
                 } catch (error) {
                     console.error(error);
@@ -616,71 +593,71 @@
                 }
             }
 
+            // --- 加密 (左側明文轉密文) ---
             async function handleEncryptDirect() {
                 try {
                     const text = inputText.value.trim();
                     const pwd = password.value;
                     if (!text) { showStatus('請輸入要加密的文字', 'error'); return; }
+                    await performEncryption(text);
+                    showStatus('左側文字已加密', 'success');
+                } catch (error) {
+                    showStatus('加密失敗', 'error');
+                }
+            }
+
+            // --- 反向加密 (右側內容轉左側) ---
+            async function handleEncryptResult() {
+                try {
+                    let textToEncrypt = '';
                     
-                    const key = await generateKey(pwd);
-                    const iv = getRandomBytes(12);
-                    const encoder = new TextEncoder();
-                    const data = encoder.encode(text);
-                    
-                    const encryptedBuffer = await crypto.subtle.encrypt(
-                        { name: 'AES-GCM', iv: iv, tagLength: 128 }, key, data
-                    );
-                    
-                    const result = new Uint8Array(iv.length + encryptedBuffer.byteLength);
-                    result.set(iv, 0);
-                    result.set(new Uint8Array(encryptedBuffer), iv.length);
-                    
-                    const base64String = btoa(String.fromCharCode(...result));
-                    inputText.value = base64String;
-                    
-                    inputText.style.backgroundColor = '#fffaf0';
-                    setTimeout(() => inputText.style.backgroundColor = '#f7fafc', 500);
-                    showStatus('文字已直接加密', 'success');
+                    // 根據當前模式決定加密內容來源
+                    if (currentMode === 'list') {
+                        // 如果在列表模式，重新組合列表
+                        const items = listContainer.querySelectorAll('.item-textarea');
+                        if (items.length === 0) { showStatus('列表為空', 'error'); return; }
+                        const textParts = [];
+                        items.forEach(textarea => {
+                            if(textarea.value.trim()) textParts.push(textarea.value.trim());
+                        });
+                        textToEncrypt = textParts.join('\n\n');
+                    } else {
+                        // 如果在純文字模式，直接取文字框
+                        textToEncrypt = rawTextArea.value.trim();
+                        if (!textToEncrypt) { showStatus('文字區為空', 'error'); return; }
+                    }
+
+                    await performEncryption(textToEncrypt);
+                    showStatus('右側內容已重新加密回左側！', 'success');
+
                 } catch (error) {
                     console.error(error);
                     showStatus('加密失敗', 'error');
                 }
             }
 
-            async function handleEncryptList() {
-                try {
-                    const items = listContainer.querySelectorAll('.item-textarea');
-                    if (items.length === 0) { showStatus('列表為空', 'error'); return; }
-
-                    const textParts = [];
-                    items.forEach(textarea => {
-                        if(textarea.value.trim()) textParts.push(textarea.value.trim());
-                    });
-                    
-                    const combinedText = textParts.join('\n\n');
-                    const pwd = password.value;
-                    const key = await generateKey(pwd);
-                    const iv = getRandomBytes(12);
-                    const encoder = new TextEncoder();
-                    const data = encoder.encode(combinedText);
-                    
-                    const encryptedBuffer = await crypto.subtle.encrypt(
-                        { name: 'AES-GCM', iv: iv, tagLength: 128 }, key, data
-                    );
-                    
-                    const result = new Uint8Array(iv.length + encryptedBuffer.byteLength);
-                    result.set(iv, 0);
-                    result.set(new Uint8Array(encryptedBuffer), iv.length);
-                    
-                    inputText.value = btoa(String.fromCharCode(...result));
-                    
-                    inputText.style.backgroundColor = '#f0fff4';
-                    setTimeout(() => inputText.style.backgroundColor = '#f7fafc', 500);
-                    showStatus('列表已重新加密回左側！', 'success');
-                } catch (error) {
-                    console.error(error);
-                    showStatus('加密失敗', 'error');
-                }
+            // 共用加密執行函數
+            async function performEncryption(text) {
+                const pwd = password.value;
+                const key = await generateKey(pwd);
+                const iv = getRandomBytes(12);
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text);
+                
+                const encryptedBuffer = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv, tagLength: 128 }, key, data
+                );
+                
+                const result = new Uint8Array(iv.length + encryptedBuffer.byteLength);
+                result.set(iv, 0);
+                result.set(new Uint8Array(encryptedBuffer), iv.length);
+                
+                const base64String = btoa(String.fromCharCode(...result));
+                inputText.value = base64String;
+                
+                // 視覺提示
+                inputText.style.backgroundColor = '#f0fff4';
+                setTimeout(() => inputText.style.backgroundColor = '#f7fafc', 500);
             }
 
             window.copyToClipboard = function(text) {
@@ -688,34 +665,24 @@
                     navigator.clipboard.writeText(text)
                         .then(() => showStatus('已複製', 'success'))
                         .catch(() => fallbackCopy(text));
-                } else {
-                    fallbackCopy(text);
-                }
+                } else { fallbackCopy(text); }
             };
 
             function fallbackCopy(text) {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-                showStatus('已複製', 'success');
+                const ta = document.createElement('textarea'); ta.value = text;
+                document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+                document.body.removeChild(ta); showStatus('已複製', 'success');
             }
 
-            copyBtn.addEventListener('click', () => {
-                if(inputText.value) window.copyToClipboard(inputText.value);
-            });
-
+            copyBtn.addEventListener('click', () => { if(inputText.value) window.copyToClipboard(inputText.value); });
             function showStatus(message, type) {
-                status.textContent = message;
-                status.className = type + ' show';
+                status.textContent = message; status.className = type + ' show';
                 setTimeout(() => status.className = '', 3000);
             }
 
             decryptBtn.addEventListener('click', handleDecrypt);
             encryptDirectBtn.addEventListener('click', handleEncryptDirect);
-            encryptListBtn.addEventListener('click', handleEncryptList);
+            encryptResultBtn.addEventListener('click', handleEncryptResult);
         });
     </script>
 </body>
